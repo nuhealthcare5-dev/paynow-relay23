@@ -4,9 +4,11 @@ import Paynow from "paynow";
 const app = express();
 app.use(express.json());
 
-// ==========================
-// ENV CHECK
-// ==========================
+const PORT = process.env.PORT || 3000;
+
+/* ================================
+   ENV CHECK
+================================ */
 console.log("ENV CHECK:", {
   PAYNOW_INTEGRATION_ID: !!process.env.PAYNOW_INTEGRATION_ID,
   PAYNOW_INTEGRATION_KEY: !!process.env.PAYNOW_INTEGRATION_KEY,
@@ -22,24 +24,19 @@ if (
   process.exit(1);
 }
 
-// ==========================
-// INIT PAYNOW
-// ==========================
-let paynow;
-try {
-  paynow = new Paynow(
-    process.env.PAYNOW_INTEGRATION_ID,
-    process.env.PAYNOW_INTEGRATION_KEY
-  );
-  console.log("✅ Paynow initialized successfully");
-} catch (err) {
-  console.error("❌ PAYNOW INIT FAILED", err);
-  process.exit(1);
-}
+/* ================================
+   INIT PAYNOW
+================================ */
+const paynow = new Paynow(
+  process.env.PAYNOW_INTEGRATION_ID,
+  process.env.PAYNOW_INTEGRATION_KEY
+);
 
-// ==========================
-// HEALTH CHECK
-// ==========================
+console.log("✅ Paynow initialized successfully");
+
+/* ================================
+   HEALTH CHECK
+================================ */
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "ok",
@@ -48,25 +45,19 @@ app.get("/health", (req, res) => {
   });
 });
 
-// ==========================
-// CREATE PAYMENT
-// ==========================
+/* ================================
+   CREATE PAYMENT
+================================ */
 app.post("/create-payment", async (req, res) => {
   try {
     if (req.headers["x-relay-secret"] !== process.env.RELAY_SECRET) {
-      return res.status(401).json({
-        success: false,
-        error: "Unauthorized",
-      });
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
     const { email, amount, reference } = req.body;
 
     if (!email || !amount || !reference) {
-      return res.status(400).json({
-        success: false,
-        error: "Missing email, amount or reference",
-      });
+      return res.status(400).json({ error: "Missing fields" });
     }
 
     const payment = paynow.createPayment(reference, email);
@@ -76,30 +67,24 @@ app.post("/create-payment", async (req, res) => {
 
     if (!response.success) {
       return res.status(400).json({
-        success: false,
-        error: "Paynow rejected transaction",
+        error: "Paynow rejected the transaction",
       });
     }
 
-    return res.json({
+    res.json({
       success: true,
       redirectUrl: response.redirectUrl,
       pollUrl: response.pollUrl,
     });
   } catch (err) {
     console.error("PAYNOW ERROR:", err);
-    return res.status(500).json({
-      success: false,
-      error: "Payment relay error",
-    });
+    res.status(500).json({ error: "Payment failed" });
   }
 });
 
-// ==========================
-// START SERVER (RAILWAY SAFE)
-// ==========================
-const PORT = process.env.PORT || 3000;
-
+/* ================================
+   START SERVER (IMPORTANT)
+================================ */
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Paynow relay running on port ${PORT}`);
 });
