@@ -1,5 +1,8 @@
 import express from "express";
-import Paynow from "paynow";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const Paynow = require("paynow");
 
 const app = express();
 app.use(express.json());
@@ -25,7 +28,7 @@ if (
 }
 
 /* ================================
-   INIT PAYNOW
+   INIT PAYNOW (THIS NOW WORKS)
 ================================ */
 const paynow = new Paynow(
   process.env.PAYNOW_INTEGRATION_ID,
@@ -67,7 +70,7 @@ app.post("/create-payment", async (req, res) => {
 
     if (!response.success) {
       return res.status(400).json({
-        error: "Paynow rejected the transaction",
+        error: "Paynow rejected transaction",
       });
     }
 
@@ -83,7 +86,7 @@ app.post("/create-payment", async (req, res) => {
 });
 
 /* ================================
-   START SERVER (IMPORTANT)
+   START SERVER
 ================================ */
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Paynow relay running on port ${PORT}`);
